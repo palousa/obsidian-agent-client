@@ -72,6 +72,12 @@ export interface PreparePromptInput {
 
 	/** Maximum characters for selection (default: 10000) */
 	maxSelectionLength?: number;
+
+	/** Whether to prepend current date/time to the prompt */
+	prependDateTime?: boolean;
+
+	/** IANA timezone for date/time prepend (empty = system default) */
+	dateTimeTimezone?: string;
 }
 
 /**
@@ -145,6 +151,23 @@ const DEFAULT_MAX_SELECTION_LENGTH = 10000; // Default maximum characters for se
 // ============================================================================
 // Prompt Preparation Functions
 // ============================================================================
+
+/**
+ * Build a timestamp string for prepending to prompts.
+ * Returns null if prependDateTime is not enabled.
+ */
+function buildTimestampPrefix(input: PreparePromptInput): string | null {
+	if (!input.prependDateTime) return null;
+	const tz =
+		input.dateTimeTimezone ||
+		Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const now = new Date().toLocaleString("en-US", {
+		timeZone: tz,
+		dateStyle: "full",
+		timeStyle: "short",
+	});
+	return `Current time: ${now} (${tz})`;
+}
 
 /**
  * Prepare a prompt for sending to the agent.
@@ -264,7 +287,12 @@ async function preparePromptWithEmbeddedContext(
 				: `@[[${input.activeNote.name}]]\n`
 			: "";
 
+	const timestampPrefix = buildTimestampPrefix(input);
+
 	const agentContent: PromptContent[] = [
+		...(timestampPrefix
+			? [{ type: "text" as const, text: timestampPrefix }]
+			: []),
 		...resourceBlocks,
 		...autoMentionBlocks,
 		...(input.message || autoMentionPrefix
@@ -388,7 +416,12 @@ async function preparePromptWithTextContext(
 		...(input.resourceLinks || []),
 	];
 
+	const timestampPrefix = buildTimestampPrefix(input);
+
 	const agentContent: PromptContent[] = [
+		...(timestampPrefix
+			? [{ type: "text" as const, text: timestampPrefix }]
+			: []),
 		...(agentMessageText
 			? [{ type: "text" as const, text: agentMessageText }]
 			: []),

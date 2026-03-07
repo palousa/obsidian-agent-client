@@ -199,6 +199,8 @@ export function useChatController(
 			windowsWslMode: settings.windowsWslMode,
 			maxNoteLength: settings.displaySettings.maxNoteLength,
 			maxSelectionLength: settings.displaySettings.maxSelectionLength,
+			prependDateTime: settings.prependDateTime,
+			dateTimeTimezone: settings.dateTimeTimezone,
 		},
 	);
 

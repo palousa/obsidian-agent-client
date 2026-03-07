@@ -149,6 +149,8 @@ export interface SettingsContext {
 	windowsWslMode: boolean;
 	maxNoteLength: number;
 	maxSelectionLength: number;
+	prependDateTime: boolean;
+	dateTimeTimezone: string;
 }
 
 // ============================================================================
@@ -597,6 +599,8 @@ export function useChat(
 						false,
 					maxNoteLength: settingsContext.maxNoteLength,
 					maxSelectionLength: settingsContext.maxSelectionLength,
+					prependDateTime: settingsContext.prependDateTime,
+					dateTimeTimezone: settingsContext.dateTimeTimezone,
 				},
 				vaultAccess,
 				mentionService,

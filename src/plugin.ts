@@ -89,6 +89,9 @@ export interface AgentClientPluginSettings {
 	sendMessageShortcut: SendMessageShortcut;
 	// View settings
 	chatViewLocation: ChatViewLocation;
+	// Timestamp prepend
+	prependDateTime: boolean;
+	dateTimeTimezone: string;
 	// Display settings
 	displaySettings: {
 		autoCollapseDiffs: boolean;
@@ -158,6 +161,8 @@ const DEFAULT_SETTINGS: AgentClientPluginSettings = {
 	windowsWslDistribution: undefined,
 	sendMessageShortcut: "enter",
 	chatViewLocation: "right-tab",
+	prependDateTime: false,
+	dateTimeTimezone: "",
 	displaySettings: {
 		autoCollapseDiffs: false,
 		diffCollapseThreshold: 10,
@@ -1084,6 +1089,14 @@ export default class AgentClientPlugin extends Plugin {
 				rawSettings.chatViewLocation === "editor-split"
 					? rawSettings.chatViewLocation
 					: DEFAULT_SETTINGS.chatViewLocation,
+			prependDateTime:
+				typeof rawSettings.prependDateTime === "boolean"
+					? rawSettings.prependDateTime
+					: DEFAULT_SETTINGS.prependDateTime,
+			dateTimeTimezone:
+				typeof rawSettings.dateTimeTimezone === "string"
+					? rawSettings.dateTimeTimezone.trim()
+					: DEFAULT_SETTINGS.dateTimeTimezone,
 			displaySettings: (() => {
 				const rawDisplay = rawSettings.displaySettings as
 					| Record<string, unknown>
