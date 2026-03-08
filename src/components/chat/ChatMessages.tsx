@@ -130,7 +130,12 @@ export function ChatMessages({
 				</div>
 			) : (
 				<>
-					{messages.map((message) => (
+					{messages.filter((msg) => {
+						const text = msg.content.find((c) => c.type === "text" || c.type === "text_with_context")?.text?.trim() ?? "";
+						if (msg.role === "user" && text.startsWith("[Heartbeat tick]")) return false;
+						if (msg.role === "assistant" && text === "HEARTBEAT_OK") return false;
+						return true;
+					}).map((message) => (
 						<MessageRenderer
 							key={message.id}
 							message={message}

@@ -650,6 +650,118 @@ export class AgentClientSettingTab extends PluginSettingTab {
 			);
 
 		// ─────────────────────────────────────────────────────────────────────
+		// Heartbeat
+		// ─────────────────────────────────────────────────────────────────────
+
+		new Setting(containerEl).setName("Heartbeat").setHeading();
+
+		new Setting(containerEl)
+			.setName("Enable heartbeat")
+			.setDesc(
+				"Periodically send standing instructions to the agent. If it has something to tell you, it will surface a notification.",
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.heartbeat.enabled)
+					.onChange(async (value) => {
+						this.plugin.settings.heartbeat.enabled = value;
+						await this.plugin.saveSettings();
+						this.plugin.heartbeatManager?.restart();
+						this.display();
+					}),
+			);
+
+		if (this.plugin.settings.heartbeat.enabled) {
+			new Setting(containerEl)
+				.setName("Interval (minutes)")
+				.setDesc("How often the heartbeat checks in")
+				.addText((text) =>
+					text
+						.setPlaceholder("30")
+						.setValue(
+							String(
+								this.plugin.settings.heartbeat.intervalMinutes,
+							),
+						)
+						.onChange(async (value) => {
+							const n = parseInt(value, 10);
+							if (n > 0) {
+								this.plugin.settings.heartbeat.intervalMinutes = n;
+								await this.plugin.saveSettings();
+								this.plugin.heartbeatManager?.restart();
+							}
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName("Instructions file")
+				.setDesc(
+					"Path to the standing instructions file (relative to vault root)",
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder("HEARTBEAT.md")
+						.setValue(this.plugin.settings.heartbeat.filePath)
+						.onChange(async (value) => {
+							this.plugin.settings.heartbeat.filePath = value;
+							await this.plugin.saveSettings();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName("Log file")
+				.setDesc("Where heartbeat responses are logged")
+				.addText((text) =>
+					text
+						.setPlaceholder("Heartbeat Log.md")
+						.setValue(this.plugin.settings.heartbeat.logFilePath)
+						.onChange(async (value) => {
+							this.plugin.settings.heartbeat.logFilePath = value;
+							await this.plugin.saveSettings();
+						}),
+				);
+
+			new Setting(containerEl)
+				.setName("Active hours")
+				.setDesc(
+					"Only run heartbeat during these hours (0-23). Set both to 0 to disable.",
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder("8")
+						.setValue(
+							String(
+								this.plugin.settings.heartbeat.activeHoursStart,
+							),
+						)
+						.onChange(async (value) => {
+							const n = parseInt(value, 10);
+							if (n >= 0 && n <= 23) {
+								this.plugin.settings.heartbeat.activeHoursStart = n;
+								await this.plugin.saveSettings();
+							}
+						}),
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder("22")
+						.setValue(
+							String(
+								this.plugin.settings.heartbeat.activeHoursEnd,
+							),
+						)
+						.onChange(async (value) => {
+							const n = parseInt(value, 10);
+							if (n >= 0 && n <= 23) {
+								this.plugin.settings.heartbeat.activeHoursEnd = n;
+								await this.plugin.saveSettings();
+							}
+						}),
+				);
+
+		}
+
+		// ─────────────────────────────────────────────────────────────────────
 		// Developer
 		// ─────────────────────────────────────────────────────────────────────
 

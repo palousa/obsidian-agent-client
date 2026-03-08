@@ -16,6 +16,7 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 // Utility imports
 import { getLogger, Logger } from "../../shared/logger";
+import { ChatExporter } from "../../shared/chat-exporter";
 
 // Adapter imports
 import type { IAcpClient } from "../../adapters/acp/acp.adapter";
@@ -285,9 +286,10 @@ function ChatComponent({
 	);
 
 	/** Send message for broadcast commands (returns true if sent) */
-	const sendMessageForBroadcast = useCallback(async (): Promise<boolean> => {
-		// Allow sending if there's text OR attachments
-		if (!inputValue.trim() && attachedFiles.length === 0) {
+	const sendMessageForBroadcast = useCallback(async (text?: string): Promise<boolean> => {
+		const overrideText = text?.trim();
+		// Allow sending if there's override text, input text, OR attachments
+		if (!overrideText && !inputValue.trim() && attachedFiles.length === 0) {
 			return false;
 		}
 		if (!isSessionReady || sessionHistory.loading) {
@@ -297,12 +299,14 @@ function ChatComponent({
 			return false;
 		}
 
-		// Clear input before sending
-		const messageToSend = inputValue.trim();
+		// Clear input before sending (but not for programmatic overrides like heartbeat)
+		const messageToSend = overrideText || inputValue.trim();
 		const filesToSend =
 			attachedFiles.length > 0 ? [...attachedFiles] : undefined;
-		setInputValue("");
-		setAttachedFiles([]);
+		if (!overrideText) {
+			setInputValue("");
+			setAttachedFiles([]);
+		}
 
 		await handleSendMessage(messageToSend, filesToSend);
 		return true;
@@ -350,6 +354,18 @@ function ChatComponent({
 			sendMessage: sendMessageForBroadcast,
 			canSend: canSendForBroadcast,
 			cancel: cancelForBroadcast,
+			exportSession: async (openFile?: boolean) => {
+				if (messages.length === 0 || !session.sessionId) return null;
+				const exporter = new ChatExporter(plugin);
+				return exporter.exportToMarkdown(
+					messages,
+					session.agentDisplayName,
+					session.agentId,
+					session.sessionId,
+					session.createdAt,
+					openFile ?? false,
+				);
+			},
 		});
 
 		return () => {
@@ -617,9 +633,10 @@ interface ChatViewState extends Record<string, unknown> {
 type GetDisplayNameCallback = () => string;
 type GetInputStateCallback = () => ChatInputState | null;
 type SetInputStateCallback = (state: ChatInputState) => void;
-type SendMessageCallback = () => Promise<boolean>;
+type SendMessageCallback = (text?: string) => Promise<boolean>;
 type CanSendCallback = () => boolean;
 type CancelCallback = () => Promise<void>;
+type ExportSessionCallback = (openFile?: boolean) => Promise<string | null>;
 
 export class ChatView extends ItemView implements IChatViewContainer {
 	private root: Root | null = null;
@@ -642,6 +659,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	private sendMessageCallback: SendMessageCallback | null = null;
 	private canSendCallback: CanSendCallback | null = null;
 	private cancelCallback: CancelCallback | null = null;
+	private exportSessionCallback: ExportSessionCallback | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: AgentClientPlugin) {
 		super(leaf);
@@ -737,6 +755,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 		sendMessage: SendMessageCallback;
 		canSend: CanSendCallback;
 		cancel: CancelCallback;
+		exportSession: ExportSessionCallback;
 	}): void {
 		this.getDisplayNameCallback = callbacks.getDisplayName;
 		this.getInputStateCallback = callbacks.getInputState;
@@ -744,6 +763,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 		this.sendMessageCallback = callbacks.sendMessage;
 		this.canSendCallback = callbacks.canSend;
 		this.cancelCallback = callbacks.cancel;
+		this.exportSessionCallback = callbacks.exportSession;
 	}
 
 	/**
@@ -756,6 +776,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 		this.sendMessageCallback = null;
 		this.canSendCallback = null;
 		this.cancelCallback = null;
+		this.exportSessionCallback = null;
 	}
 
 	getDisplayName(): string {
@@ -780,8 +801,8 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	/**
 	 * Trigger send message. Returns true if message was sent.
 	 */
-	async sendMessage(): Promise<boolean> {
-		return (await this.sendMessageCallback?.()) ?? false;
+	async sendMessage(text?: string): Promise<boolean> {
+		return (await this.sendMessageCallback?.(text)) ?? false;
 	}
 
 	/**
@@ -796,6 +817,10 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	 */
 	async cancelOperation(): Promise<void> {
 		await this.cancelCallback?.();
+	}
+
+	async exportSession(openFile = false): Promise<string | null> {
+		return (await this.exportSessionCallback?.(openFile)) ?? null;
 	}
 
 	// ============================================================

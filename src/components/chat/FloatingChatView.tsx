@@ -18,6 +18,7 @@ import { InlineHeader } from "./InlineHeader";
 
 // Hooks imports
 import { useChatController } from "../../hooks/useChatController";
+import { ChatExporter } from "../../shared/chat-exporter";
 
 import { clampPosition } from "../../shared/floating-utils";
 
@@ -37,6 +38,7 @@ interface FloatingViewCallbacks {
 	canSend: () => boolean;
 	sendMessage: () => Promise<boolean>;
 	cancelOperation: () => Promise<void>;
+	exportSession: (openFile?: boolean) => Promise<string | null>;
 	focus: () => void;
 	hasFocus: () => boolean;
 	expand: () => void;
@@ -172,6 +174,10 @@ export class FloatingViewContainer implements IChatViewContainer {
 
 	async cancelOperation(): Promise<void> {
 		await this.callbacks?.cancelOperation();
+	}
+
+	async exportSession(openFile = false): Promise<string | null> {
+		return (await this.callbacks?.exportSession(openFile)) ?? null;
 	}
 
 	getContainerEl(): HTMLElement {
@@ -518,6 +524,18 @@ function FloatingChatComponent({
 					return true;
 				},
 				cancelOperation: handleStopGeneration,
+				exportSession: async (openFile?: boolean) => {
+					if (messages.length === 0 || !session.sessionId) return null;
+					const exporter = new ChatExporter(plugin);
+					return exporter.exportToMarkdown(
+						messages,
+						session.agentDisplayName,
+						session.agentId,
+						session.sessionId,
+						session.createdAt,
+						openFile ?? false,
+					);
+				},
 				// Focus with auto-expand
 				focus: () => {
 					// Expand if collapsed

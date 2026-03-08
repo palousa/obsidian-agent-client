@@ -118,15 +118,23 @@ export interface IChatViewContainer {
 
 	/**
 	 * Trigger send message with full support for images.
+	 * @param text - Optional text override. When provided, sends this text directly
+	 *   bypassing React input state (needed for programmatic sends like heartbeat).
 	 * @returns Promise<boolean> - true if message was sent, false otherwise
 	 */
-	sendMessage(): Promise<boolean>;
+	sendMessage(text?: string): Promise<boolean>;
 
 	/**
 	 * Cancel current operation.
 	 * Stops ongoing message generation.
 	 */
 	cancelOperation(): Promise<void>;
+
+	/**
+	 * Export the current session to markdown.
+	 * Returns the file path if exported, null if no messages to export.
+	 */
+	exportSession(openFile?: boolean): Promise<string | null>;
 
 	// ============================================================
 	// Container Access

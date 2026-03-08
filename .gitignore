@@ -46,5 +46,7 @@ docs/.vitepress/cache/
 # Personal developer logs
 dev/
 
+# Debug logs
+heartbeat-debug.log
 # Local implementation plans and working documents
 plan/

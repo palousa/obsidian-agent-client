@@ -36,6 +36,7 @@ import {
 } from "./domain/models/agent-config";
 import type { SavedSessionInfo } from "./domain/models/session-info";
 import { initializeLogger } from "./shared/logger";
+import { HeartbeatManager } from "./shared/heartbeat-manager";
 
 // Re-export for backward compatibility
 export type { AgentEnvVar, CustomAgentSettings };
@@ -107,6 +108,15 @@ export interface AgentClientPluginSettings {
 	lastUsedModels: Record<string, string>;
 	// Last used mode per agent (agentId → modeId)
 	lastUsedModes: Record<string, string>;
+	// Heartbeat settings
+	heartbeat: {
+		enabled: boolean;
+		intervalMinutes: number;
+		filePath: string;
+		logFilePath: string;
+		activeHoursStart: number;
+		activeHoursEnd: number;
+	};
 	// Floating chat settings
 	enableFloatingChat: boolean;
 	floatingButtonImage: string;
@@ -175,6 +185,14 @@ const DEFAULT_SETTINGS: AgentClientPluginSettings = {
 	lastUsedModels: {},
 	lastUsedModes: {},
 	enableFloatingChat: false,
+	heartbeat: {
+		enabled: false,
+		intervalMinutes: 30,
+		filePath: "HEARTBEAT.md",
+		logFilePath: "Heartbeat Log.md",
+		activeHoursStart: 8,
+		activeHoursEnd: 22,
+	},
 	floatingButtonImage: "",
 	floatingWindowSize: { width: 400, height: 500 },
 	floatingWindowPosition: null,
@@ -199,6 +217,8 @@ export default class AgentClientPlugin extends Plugin {
 	> = new Map();
 	/** Counter for generating unique floating chat instance IDs */
 	private floatingChatCounter = 0;
+	/** Heartbeat manager for proactive agent check-ins */
+	heartbeatManager: HeartbeatManager | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -348,11 +368,40 @@ export default class AgentClientPlugin extends Plugin {
 					});
 				}
 				this._adapters.clear();
+				this.heartbeatManager?.stop();
 			}),
 		);
+
+		// Start heartbeat manager
+		this.heartbeatManager = new HeartbeatManager(this);
+		this.heartbeatManager.start();
+	}
+
+	/**
+	 * Export all active chat sessions to markdown.
+	 * Can be called by heartbeat, unload, or any other trigger.
+	 */
+	async exportAllSessions(openFile = false): Promise<string[]> {
+		const paths: string[] = [];
+		for (const view of this.viewRegistry.getAll()) {
+			try {
+				const path = await view.exportSession(openFile);
+				if (path) paths.push(path);
+			} catch (e) {
+				console.warn(`[AgentClient] Export failed for view ${view.viewId}:`, e);
+			}
+		}
+		return paths;
 	}
 
 	onunload() {
+		// Export all sessions before unloading
+		void this.exportAllSessions(false);
+
+		// Stop heartbeat
+		this.heartbeatManager?.stop();
+		this.heartbeatManager = null;
+
 		// Unmount floating button
 		this.floatingButton?.unmount();
 		this.floatingButton = null;
@@ -1234,6 +1283,19 @@ export default class AgentClientPlugin extends Plugin {
 					return { x: raw.x, y: raw.y };
 				}
 				return null;
+			})(),
+			heartbeat: (() => {
+				const raw = rawSettings.heartbeat as Record<string, unknown> | null | undefined;
+				const d = DEFAULT_SETTINGS.heartbeat;
+				if (!raw || typeof raw !== "object") return d;
+				return {
+					enabled: typeof raw.enabled === "boolean" ? raw.enabled : d.enabled,
+					intervalMinutes: typeof raw.intervalMinutes === "number" ? raw.intervalMinutes : d.intervalMinutes,
+					filePath: typeof raw.filePath === "string" ? raw.filePath : d.filePath,
+					logFilePath: typeof raw.logFilePath === "string" ? raw.logFilePath : d.logFilePath,
+					activeHoursStart: typeof raw.activeHoursStart === "number" ? raw.activeHoursStart : d.activeHoursStart,
+					activeHoursEnd: typeof raw.activeHoursEnd === "number" ? raw.activeHoursEnd : d.activeHoursEnd,
+				};
 			})(),
 		};
 
