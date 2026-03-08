@@ -120,6 +120,12 @@ Heartbeat ticks (`[Heartbeat tick]`) and `HEARTBEAT_OK` responses are filtered f
 
 Injects current date/time into every prompt so the agent always knows when it is. Configurable via `prependDateTime` setting.
 
+### Known Limitations & Roadmap
+
+- **Logging is agent-reported, not code-enforced.** The heartbeat log relies on the agent self-reporting its actions. There's no independent verification that the log is complete or accurate. Planned: move logging to a code-level guarantee (like session export), so the audit trail doesn't depend on model compliance.
+- **No structured observability.** Log entries are human-readable Markdown, not machine-parseable. Planned: structured, append-only log format designed for eventual OTEL integration and cryptographic verifiability (provenance).
+- **No immutability guarantees.** The agent can currently edit or delete its own log entries. Planned: append-only enforcement at the file/system level.
+
 ## Development
 
 ```bash
