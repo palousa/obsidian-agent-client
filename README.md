@@ -91,6 +91,35 @@ Open a terminal (Terminal on macOS/Linux, PowerShell on Windows) and run the fol
 
 **[Full Documentation](https://rait-09.github.io/obsidian-agent-client/)**
 
+## Fork Customizations (`erin/customizations`)
+
+This fork adds features for proactive agentic experiences — an agent that checks in periodically, does background work, and maintains context across sessions.
+
+### Heartbeat System (`src/shared/heartbeat-manager.ts`)
+
+A timer-based system that periodically sends standing instructions (from a configurable vault file, e.g. `HEARTBEAT.md`) to a dedicated agent session. The agent can do silent work (read/write files, run tools) and surface messages inline when something needs attention.
+
+- Configurable interval, active hours, and duplicate suppression
+- Full settings UI panel (Settings → Agent Client → Heartbeat)
+- Responses logged to a configurable vault file (e.g. `Heartbeat Log.md`)
+- `HEARTBEAT_OK` sentinel for "nothing to report" ticks
+
+### sendMessage Text Override
+
+`sendMessage(text?: string)` accepts an optional text parameter that bypasses React input state. This allows programmatic message injection (e.g. from the heartbeat) without clearing the user's in-progress typing.
+
+### Session Export API
+
+`exportSession()` exposed on `IChatViewContainer` interface, callable from any part of the system — heartbeat, plugin lifecycle, timers. `exportAllSessions()` on the plugin fires automatically on unload so sessions aren't lost on restart.
+
+### Chat UI Filtering
+
+Heartbeat ticks (`[Heartbeat tick]`) and `HEARTBEAT_OK` responses are filtered from the chat UI. The heartbeat works silently; only substantive responses appear in the conversation.
+
+### Timestamp Prepend
+
+Injects current date/time into every prompt so the agent always knows when it is. Configurable via `prependDateTime` setting.
+
 ## Development
 
 ```bash
